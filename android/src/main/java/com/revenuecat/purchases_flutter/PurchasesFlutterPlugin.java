@@ -113,6 +113,8 @@ public class PurchasesFlutterPlugin implements FlutterPlugin, MethodCallHandler,
                 String appUserId = call.argument("appUserId");
                 String purchasesAreCompletedBy = call.argument("purchasesAreCompletedBy");
                 Boolean useAmazon = call.argument("useAmazon");
+                String storeName = call.argument("store");
+                String galaxyBillingMode = call.argument("galaxyBillingMode");
                 // noinspection unused
                 String userDefaultsSuiteName = call.argument("userDefaultsSuiteName"); // iOS-only, unused.
                 // noinspection unused
@@ -126,6 +128,7 @@ public class PurchasesFlutterPlugin implements FlutterPlugin, MethodCallHandler,
                 Boolean diagnosticsEnabled = call.argument("diagnosticsEnabled");
                 String preferredUILocaleOverride = call.argument("preferredUILocaleOverride");
                 setupPurchases(apiKey, appUserId, purchasesAreCompletedBy, useAmazon,
+                        storeName, galaxyBillingMode,
                         shouldShowInAppMessagesAutomatically, verificationMode,
                         pendingTransactionsForPrepaidPlansEnabled,
                         automaticDeviceIdentifierCollectionEnabled, diagnosticsEnabled,
@@ -428,6 +431,7 @@ public class PurchasesFlutterPlugin implements FlutterPlugin, MethodCallHandler,
 
     private void setupPurchases(String apiKey, String appUserID,
             @Nullable String purchasesAreCompletedBy, @Nullable Boolean useAmazon,
+            @Nullable String storeName, @Nullable String galaxyBillingMode,
             @Nullable Boolean shouldShowInAppMessagesAutomatically, @Nullable String verificationMode,
             @Nullable Boolean pendingTransactionsForPrepaidPlansEnabled,
             @Nullable Boolean automaticDeviceIdentifierCollectionEnabled,
@@ -439,6 +443,13 @@ public class PurchasesFlutterPlugin implements FlutterPlugin, MethodCallHandler,
             Store store = Store.PLAY_STORE;
             if (useAmazon != null && useAmazon) {
                 store = Store.AMAZON;
+            }
+            // Checked after Amazon and as an exact match, mirroring
+            // RNPurchasesModule's `"GALAXY".equals(storeString)`. An unknown
+            // value leaves the store at PLAY_STORE rather than throwing: a typo
+            // should not become a crash at launch.
+            if ("GALAXY".equals(storeName)) {
+                store = Store.GALAXY;
             }
 
             CommonKt.configure(this.applicationContext,
@@ -453,7 +464,13 @@ public class PurchasesFlutterPlugin implements FlutterPlugin, MethodCallHandler,
                     pendingTransactionsForPrepaidPlansEnabled,
                     diagnosticsEnabled,
                     automaticDeviceIdentifierCollectionEnabled,
-                    preferredUILocaleOverride);
+                    preferredUILocaleOverride,
+                    // The 14th parameter, added in purchases-hybrid-common
+                    // 18.33.1. `configure` carries @JvmOverloads, so the
+                    // 13-argument call this replaces also compiled — which is
+                    // why the missing Galaxy support was silent rather than a
+                    // build error.
+                    galaxyBillingMode);
 
             setUpdatedCustomerInfoListener();
             result.success(null);

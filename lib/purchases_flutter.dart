@@ -179,6 +179,16 @@ class Purchases {
         'userDefaultsSuiteName': purchasesConfiguration.userDefaultsSuiteName,
         'storeKitVersion': storeKitVersionToUse.name,
         'useAmazon': purchasesConfiguration.store == Store.amazon,
+        // Sent on every platform and every store, unconditionally.
+        // hybrid-common's `configure` ignores the billing mode unless the store
+        // is GALAXY (`configureGalaxyBillingModeIfNeeded` returns early), and
+        // iOS ignores both — so a conditional here would buy nothing and add a
+        // branch that can be wrong. A string rather than a second `useX`
+        // boolean because there are now three Android stores.
+        'store': purchasesConfiguration.store == Store.galaxy ? 'GALAXY' : null,
+        'galaxyBillingMode': purchasesConfiguration is GalaxyConfiguration
+            ? purchasesConfiguration.galaxyBillingMode.wireValue
+            : null,
         'shouldShowInAppMessagesAutomatically':
             purchasesConfiguration.shouldShowInAppMessagesAutomatically,
         'entitlementVerificationMode':
