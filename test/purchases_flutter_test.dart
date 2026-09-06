@@ -96,6 +96,8 @@ void main() {
             'purchasesAreCompletedBy': 'REVENUECAT',
             'userDefaultsSuiteName': null,
             'useAmazon': false,
+            'store': null,
+            'galaxyBillingMode': null,
             'storeKitVersion': 'DEFAULT',
             'shouldShowInAppMessagesAutomatically': true,
             'entitlementVerificationMode': 'DISABLED',
@@ -130,6 +132,8 @@ void main() {
             'purchasesAreCompletedBy': 'MY_APP',
             'userDefaultsSuiteName': null,
             'useAmazon': false,
+            'store': null,
+            'galaxyBillingMode': null,
             'storeKitVersion': 'STOREKIT_2',
             'shouldShowInAppMessagesAutomatically': true,
             'entitlementVerificationMode': 'DISABLED',
@@ -162,6 +166,8 @@ void main() {
             'purchasesAreCompletedBy': 'REVENUECAT',
             'userDefaultsSuiteName': null,
             'useAmazon': false,
+            'store': null,
+            'galaxyBillingMode': null,
             'storeKitVersion': 'STOREKIT_1',
             'shouldShowInAppMessagesAutomatically': true,
             'entitlementVerificationMode': 'DISABLED',
@@ -197,6 +203,8 @@ void main() {
             'purchasesAreCompletedBy': 'MY_APP',
             'userDefaultsSuiteName': null,
             'useAmazon': false,
+            'store': null,
+            'galaxyBillingMode': null,
             'storeKitVersion': 'STOREKIT_2',
             'shouldShowInAppMessagesAutomatically': true,
             'entitlementVerificationMode': 'DISABLED',
@@ -1784,6 +1792,8 @@ void main() {
             'userDefaultsSuiteName': null,
             'storeKitVersion': 'STOREKIT_2',
             'useAmazon': true,
+            'store': null,
+            'galaxyBillingMode': null,
             'shouldShowInAppMessagesAutomatically': true,
             'entitlementVerificationMode': 'DISABLED',
             'pendingTransactionsForPrepaidPlansEnabled': false,
@@ -1816,6 +1826,8 @@ void main() {
             'purchasesAreCompletedBy': 'REVENUECAT',
             'userDefaultsSuiteName': null,
             'useAmazon': true,
+            'store': null,
+            'galaxyBillingMode': null,
             'storeKitVersion': 'DEFAULT',
             'shouldShowInAppMessagesAutomatically': true,
             'entitlementVerificationMode': 'DISABLED',
@@ -1829,6 +1841,73 @@ void main() {
         ),
       ],
     );
+  });
+
+  // Galaxy Store. The store travels as a string and the billing mode as its own
+  // key, so each case asserts the exact wire values hybrid-common matches on --
+  // an approximation here (`name`, a bool) is the bug these tests exist for.
+  Matcher galaxySetupCall({required String? galaxyBillingMode}) => isMethodCall(
+        'setupPurchases',
+        arguments: <String, dynamic>{
+          'apiKey': 'api_key',
+          'appUserId': 'cesar',
+          'purchasesAreCompletedBy': 'REVENUECAT',
+          'userDefaultsSuiteName': null,
+          'useAmazon': false,
+          'store': 'GALAXY',
+          'galaxyBillingMode': galaxyBillingMode,
+          'storeKitVersion': 'DEFAULT',
+          'shouldShowInAppMessagesAutomatically': true,
+          'entitlementVerificationMode': 'DISABLED',
+          'pendingTransactionsForPrepaidPlansEnabled': false,
+          'automaticDeviceIdentifierCollectionEnabled': true,
+          'diagnosticsEnabled': false,
+          'preferredUILocaleOverride': null,
+          'useExternalPurchaseCustomLinks': false,
+          'enableExternalPurchasesInSimulator': true,
+        },
+      );
+
+  test('configure with galaxy defaults to production billing', () async {
+    await Purchases.configure(
+      GalaxyConfiguration('api_key')..appUserID = 'cesar',
+    );
+    expect(log, <Matcher>[galaxySetupCall(galaxyBillingMode: 'PRODUCTION')]);
+  });
+
+  test('configure with galaxy test billing mode', () async {
+    await Purchases.configure(
+      GalaxyConfiguration('api_key', galaxyBillingMode: GalaxyBillingMode.test)
+        ..appUserID = 'cesar',
+    );
+    expect(log, <Matcher>[galaxySetupCall(galaxyBillingMode: 'TEST')]);
+  });
+
+  test('configure with galaxy always-fail billing mode', () async {
+    await Purchases.configure(
+      GalaxyConfiguration(
+        'api_key',
+        galaxyBillingMode: GalaxyBillingMode.alwaysFail,
+      )..appUserID = 'cesar',
+    );
+    expect(log, <Matcher>[galaxySetupCall(galaxyBillingMode: 'ALWAYS_FAIL')]);
+  });
+
+  test('configure with galaxy store but no galaxy configuration', () async {
+    await Purchases.configure(
+      PurchasesConfiguration('api_key')
+        ..appUserID = 'cesar'
+        ..store = Store.galaxy,
+    );
+    // The store still travels; the mode does not, and hybrid-common then picks
+    // its own default rather than being handed a guess from here.
+    expect(log, <Matcher>[galaxySetupCall(galaxyBillingMode: null)]);
+  });
+
+  test('galaxy billing modes encode as the native constants', () {
+    expect(GalaxyBillingMode.production.wireValue, 'PRODUCTION');
+    expect(GalaxyBillingMode.test.wireValue, 'TEST');
+    expect(GalaxyBillingMode.alwaysFail.wireValue, 'ALWAYS_FAIL');
   });
 
   test('configure with base configuration', () async {
@@ -1851,6 +1930,8 @@ void main() {
             'userDefaultsSuiteName': null,
             'storeKitVersion': 'DEFAULT',
             'useAmazon': false,
+            'store': null,
+            'galaxyBillingMode': null,
             'shouldShowInAppMessagesAutomatically': true,
             'entitlementVerificationMode': 'DISABLED',
             'pendingTransactionsForPrepaidPlansEnabled': false,
@@ -1886,6 +1967,8 @@ void main() {
             'userDefaultsSuiteName': null,
             'storeKitVersion': 'DEFAULT',
             'useAmazon': true,
+            'store': null,
+            'galaxyBillingMode': null,
             'shouldShowInAppMessagesAutomatically': true,
             'entitlementVerificationMode': 'DISABLED',
             'pendingTransactionsForPrepaidPlansEnabled': false,
@@ -1918,6 +2001,8 @@ void main() {
             'userDefaultsSuiteName': null,
             'storeKitVersion': 'DEFAULT',
             'useAmazon': false,
+            'store': null,
+            'galaxyBillingMode': null,
             'shouldShowInAppMessagesAutomatically': true,
             'entitlementVerificationMode': 'DISABLED',
             'pendingTransactionsForPrepaidPlansEnabled': false,
@@ -1950,6 +2035,8 @@ void main() {
             'userDefaultsSuiteName': null,
             'storeKitVersion': 'DEFAULT',
             'useAmazon': false,
+            'store': null,
+            'galaxyBillingMode': null,
             'shouldShowInAppMessagesAutomatically': true,
             'entitlementVerificationMode': 'DISABLED',
             'pendingTransactionsForPrepaidPlansEnabled': false,
@@ -1982,6 +2069,8 @@ void main() {
             'userDefaultsSuiteName': null,
             'storeKitVersion': 'DEFAULT',
             'useAmazon': false,
+            'store': null,
+            'galaxyBillingMode': null,
             'shouldShowInAppMessagesAutomatically': true,
             'entitlementVerificationMode': 'DISABLED',
             'pendingTransactionsForPrepaidPlansEnabled': false,
@@ -2015,6 +2104,8 @@ void main() {
             'userDefaultsSuiteName': null,
             'storeKitVersion': 'DEFAULT',
             'useAmazon': false,
+            'store': null,
+            'galaxyBillingMode': null,
             'shouldShowInAppMessagesAutomatically': true,
             'entitlementVerificationMode': 'DISABLED',
             'pendingTransactionsForPrepaidPlansEnabled': false,

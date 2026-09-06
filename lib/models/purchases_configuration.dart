@@ -112,3 +112,51 @@ class AmazonConfiguration extends PurchasesConfiguration {
     store = Store.amazon;
   }
 }
+
+/// How the Samsung IAP client behaves — mirrored 1:1 onto the native
+/// `GalaxyBillingMode` that purchases-hybrid-common's
+/// `configureGalaxyBillingModeIfNeeded` selects.
+///
+/// [test] is Samsung's own "buy without being charged" mode, which is what a
+/// developer build wants; [alwaysFail] makes every purchase fail, for exercising
+/// error paths. Neither may reach a store build.
+enum GalaxyBillingMode {
+  production,
+  test,
+  alwaysFail;
+
+  /// The wire value the native side matches on.
+  ///
+  /// Spelled out rather than derived from [name]: `alwaysFail` would encode as
+  /// `alwaysFail`, hybrid-common matches `ALWAYS_FAIL`, and its `else` branch
+  /// logs a warning and falls back to PRODUCTION — i.e. a build meant to fail
+  /// every purchase would quietly charge people instead.
+  String get wireValue {
+    switch (this) {
+      case GalaxyBillingMode.production:
+        return 'PRODUCTION';
+      case GalaxyBillingMode.test:
+        return 'TEST';
+      case GalaxyBillingMode.alwaysFail:
+        return 'ALWAYS_FAIL';
+    }
+  }
+}
+
+/// A [PurchasesConfiguration] convenience object that
+/// sets [PurchasesConfiguration.store] to [Store.galaxy].
+///
+/// Android only. On iOS the store is the App Store regardless, and the native
+/// side ignores both the store and the billing mode.
+class GalaxyConfiguration extends PurchasesConfiguration {
+  GalaxyConfiguration(
+    String apiKey, {
+    this.galaxyBillingMode = GalaxyBillingMode.production,
+  }) : super(apiKey) {
+    store = Store.galaxy;
+  }
+
+  /// Defaults to [GalaxyBillingMode.production], so that forgetting to set it
+  /// cannot ship a build that takes no money.
+  final GalaxyBillingMode galaxyBillingMode;
+}
