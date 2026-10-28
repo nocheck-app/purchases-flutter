@@ -9,8 +9,11 @@ import android.util.Log;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import com.revenuecat.purchases.CacheFetchPolicy;
+import com.revenuecat.purchases.CustomerInfo;
 import com.revenuecat.purchases.DangerousSettings;
 import com.revenuecat.purchases.Purchases;
+import com.revenuecat.purchases.PurchasesError;
 import com.revenuecat.purchases.PurchasesErrorCode;
 import com.revenuecat.purchases.Store;
 import com.revenuecat.purchases.common.PlatformInfo;
@@ -22,6 +25,8 @@ import com.revenuecat.purchases.hybridcommon.OnResultAny;
 import com.revenuecat.purchases.hybridcommon.OnResultList;
 import com.revenuecat.purchases.hybridcommon.SubscriberAttributesKt;
 import com.revenuecat.purchases.hybridcommon.mappers.CustomerInfoMapperKt;
+import com.revenuecat.purchases.hybridcommon.mappers.PurchasesErrorKt;
+import com.revenuecat.purchases.interfaces.ReceiveCustomerInfoCallback;
 import com.revenuecat.purchases.models.InAppMessageType;
 
 import org.jetbrains.annotations.NotNull;
@@ -220,6 +225,9 @@ public class PurchasesFlutterPlugin implements FlutterPlugin, MethodCallHandler,
                 break;
             case "getCustomerInfo":
                 getCustomerInfo(result);
+                break;
+            case "fetchCurrentCustomerInfo":
+                fetchCurrentCustomerInfo(result);
                 break;
             case "syncPurchases":
             case "syncPurchasesForResult":
@@ -688,6 +696,32 @@ public class PurchasesFlutterPlugin implements FlutterPlugin, MethodCallHandler,
 
     private void getCustomerInfo(final Result result) {
         CommonKt.getCustomerInfo(getOnResult(result));
+    }
+
+    // nocheck fork: getCustomerInfo with CacheFetchPolicy.FETCH_CURRENT, which
+    // hybrid-common does not expose. The SDK posts its pending purchase queue
+    // before it fetches, without invalidating the cache first: a network error
+    // leaves the cached value. A RevenueCat 5xx on that post does NOT — the SDK
+    // computes offline entitlements (VERIFIED_ON_DEVICE), clears the stored
+    // customer info and answers with the offline one.
+    private void fetchCurrentCustomerInfo(final Result result) {
+        final OnResult onResult = getOnResult(result);
+        Purchases.getSharedInstance().getCustomerInfo(
+                CacheFetchPolicy.FETCH_CURRENT,
+                new ReceiveCustomerInfoCallback() {
+                    @Override
+                    public void onReceived(@NonNull CustomerInfo customerInfo) {
+                        CustomerInfoMapperKt.mapAsync(customerInfo, map -> {
+                            onResult.onReceived(map);
+                            return Unit.INSTANCE;
+                        });
+                    }
+
+                    @Override
+                    public void onError(@NonNull PurchasesError error) {
+                        onResult.onError(PurchasesErrorKt.map(error, new HashMap<>()));
+                    }
+                });
     }
 
     private void syncPurchases(final Result result) {

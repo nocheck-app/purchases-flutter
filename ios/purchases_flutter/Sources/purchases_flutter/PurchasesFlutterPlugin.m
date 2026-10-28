@@ -141,6 +141,8 @@ enableExternalPurchasesInSimulator:enableExternalPurchasesInSimulator
         [self overridePreferredUILocale:arguments[@"locale"] result:result];
     } else if ([@"getCustomerInfo" isEqualToString:call.method]) {
         [self getCustomerInfoWithResult:result];
+    } else if ([@"fetchCurrentCustomerInfo" isEqualToString:call.method]) {
+        [self fetchCurrentCustomerInfoWithResult:result];
     } else if ([@"syncPurchases" isEqualToString:call.method]) {
         [self syncPurchasesWithResult:result];
     } else if ([@"syncPurchasesForResult" isEqualToString:call.method]) {
@@ -497,6 +499,34 @@ signedDiscountTimestamp:(nullable NSString *)discountTimestamp
 
 - (void)getCustomerInfoWithResult:(FlutterResult)result {
     [RCCommonFunctionality getCustomerInfoWithCompletionBlock:[self getResponseCompletionBlock:result]];
+}
+
+// nocheck fork: getCustomerInfo with RCCacheFetchPolicyFetchCurrent, which
+// hybrid-common keeps internal. The SDK posts its unfinished transactions
+// before it fetches, without invalidating the cache first: a network error
+// leaves the cached value. A RevenueCat 5xx on that post does NOT — the SDK
+// answers offline entitlements (verifiedOnDevice), and caching that answer
+// clears the stored customer info.
+- (void)fetchCurrentCustomerInfoWithResult:(FlutterResult)result {
+    [RCPurchases.sharedPurchases getCustomerInfoWithFetchPolicy:RCCacheFetchPolicyFetchCurrent
+                                                     completion:^(RCCustomerInfo * _Nullable customerInfo,
+                                                                  NSError * _Nullable error) {
+        // Error first, then the value, then unknown — the order of
+        // hybrid-common's customerInfoCompletionBlock, so this rejects exactly
+        // where getCustomerInfo rejects.
+        if (error) {
+            [self rejectWithResult:result
+                             error:[[RCErrorContainer alloc] initWithError:error extraPayload:@{}]];
+        } else if (customerInfo) {
+            result([RCCommonFunctionality encodeCustomerInfo:customerInfo]);
+        } else {
+            NSError *unknown = [NSError errorWithDomain:RCPurchasesErrorCodeDomain
+                                                   code:RCUnknownError
+                                               userInfo:nil];
+            [self rejectWithResult:result
+                             error:[[RCErrorContainer alloc] initWithError:unknown extraPayload:@{}]];
+        }
+    }];
 }
 
 - (void)enableAdServicesAttributionTokenCollection:(FlutterResult)result {

@@ -813,6 +813,20 @@ class Purchases {
     return CustomerInfo.fromJson(Map<String, dynamic>.from(result));
   }
 
+  /// nocheck fork: customer info fetched with the native SDKs'
+  /// `CacheFetchPolicy.fetchCurrent` — never the cache. Before fetching, the
+  /// SDK posts its pending purchase queue (Android: the active purchases this
+  /// install has not posted; iOS: unfinished transactions). Unlike
+  /// [invalidateCustomerInfoCache] followed by [getCustomerInfo], the cache is
+  /// not dropped before the fetch, so a network error leaves the cached value.
+  /// A RevenueCat 5xx on the post does not: both SDKs answer offline
+  /// entitlements ([VerificationResult.verifiedOnDevice]) and drop the stored
+  /// customer info.
+  static Future<CustomerInfo> fetchCurrentCustomerInfo() async {
+    final result = await _channel.invokeMethod('fetchCurrentCustomerInfo');
+    return CustomerInfo.fromJson(Map<String, dynamic>.from(result));
+  }
+
   ///  This method will send all the purchases to the RevenueCat backend.
   ///
   ///  **WARNING**: Call this when using your own implementation of in-app

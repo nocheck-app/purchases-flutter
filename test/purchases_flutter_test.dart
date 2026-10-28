@@ -431,6 +431,27 @@ void main() {
     );
   });
 
+  test('fetchCurrentCustomerInfo calls its own method and parses', () async {
+    response = mockCustomerInfoResponse;
+    final result = await Purchases.fetchCurrentCustomerInfo();
+    expect(
+      log,
+      <Matcher>[isMethodCall('fetchCurrentCustomerInfo', arguments: null)],
+    );
+    expect(result, CustomerInfo.fromJson(mockCustomerInfoResponse));
+  });
+
+  test('fetchCurrentCustomerInfo propagates errors', () async {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (call) async {
+      throw PlatformException(code: '10', message: 'network error');
+    });
+    await expectLater(
+      Purchases.fetchCurrentCustomerInfo(),
+      throwsA(isA<PlatformException>()),
+    );
+  });
+
   test('recordPurchase sends productIdentifier and parses transaction',
       () async {
     response = mockStoreTransaction;
